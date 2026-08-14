@@ -1,0 +1,226 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-ink-50: #f6f7f9;
+    --color-ink-100: #eceef2;
+    --color-ink-200: #d5d9e2;
+    --color-ink-300: #b0b8c8;
+    --color-ink-400: #8590a8;
+    --color-ink-500: #66728c;
+    --color-ink-600: #515a72;
+    --color-ink-700: #42495c;
+    --color-ink-800: #393e4e;
+    --color-ink-900: #1c1f28;
+    --color-ink-950: #12141b;
+}
+
+/* ---------------------------------------------------------------------------
+   Lesson prose
+--------------------------------------------------------------------------- */
+
+.lesson :where(h2) {
+    scroll-margin-top: 6rem;
+}
+
+.lesson :where(pre) {
+    background-color: var(--color-ink-950);
+    color: var(--color-ink-100);
+    border-radius: 0.75rem;
+    padding: 1rem 1.15rem;
+    overflow-x: auto;
+    font-size: 0.86rem;
+    line-height: 1.65;
+    border: 1px solid var(--color-ink-800);
+}
+
+.lesson :where(pre code) {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-weight: 400;
+    font-size: inherit;
+}
+
+.lesson :where(:not(pre) > code) {
+    background-color: var(--color-ink-100);
+    color: var(--color-ink-900);
+    padding: 0.12em 0.4em;
+    border-radius: 0.35rem;
+    font-weight: 500;
+    font-size: 0.87em;
+}
+
+.lesson :where(:not(pre) > code)::before,
+.lesson :where(:not(pre) > code)::after {
+    content: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Lesson sidebar: collapsible level groups
+--------------------------------------------------------------------------- */
+
+/* Hide the native disclosure triangle in every browser (Safari needs its own). */
+summary {
+    list-style: none;
+}
+
+summary::-webkit-details-marker,
+summary::marker {
+    display: none;
+    content: '';
+}
+
+.rail-chevron {
+    display: inline-block;
+    width: 0.75rem;
+    font-size: 0.7rem;
+    line-height: 1;
+    transition: transform 0.15s ease;
+}
+
+details[open] > summary .rail-chevron {
+    transform: rotate(90deg);
+}
+
+/* The rail scrolls independently; keep its scrollbar quiet. */
+@media (min-width: 1024px) {
+    aside nav {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-ink-200) transparent;
+    }
+
+    aside nav::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    aside nav::-webkit-scrollbar-thumb {
+        background-color: var(--color-ink-200);
+        border-radius: 3px;
+    }
+
+    aside nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
+}
+
+/* The Summary block that opens every lesson — read this alone to skim. */
+.lesson :where(h2#summary) {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-indigo-600);
+}
+
+.lesson :where(h2#summary + ul) {
+    margin-top: 0.6rem;
+    margin-bottom: 2.5rem;
+    padding: 1rem 1.25rem 1rem 2.25rem;
+    background-color: var(--color-indigo-50);
+    border: 1px solid var(--color-indigo-100);
+    border-radius: 0.75rem;
+}
+
+.lesson :where(h2#summary + ul > li) {
+    margin-top: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+/* Blockquotes are used throughout the lessons as callout boxes. */
+.lesson :where(blockquote) {
+    border-left: 3px solid var(--color-indigo-400);
+    background-color: var(--color-indigo-50);
+    border-radius: 0 0.6rem 0.6rem 0;
+    padding: 0.85rem 1.1rem;
+    font-style: normal;
+    color: var(--color-ink-800);
+}
+
+.lesson :where(blockquote p:first-of-type)::before,
+.lesson :where(blockquote p:last-of-type)::after {
+    content: none;
+}
+
+.lesson :where(table) {
+    font-size: 0.9rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .lesson :where(table) {
+        display: table;
+        white-space: normal;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Syntax highlighting (highlight.js tokens, tuned to the palette above)
+--------------------------------------------------------------------------- */
+
+.hljs-comment,
+.hljs-quote {
+    color: #7f8ba3;
+    font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+    color: #c792ea;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+    color: #a5e075;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+    color: #f7c67f;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-title.function_ {
+    color: #82aaff;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable {
+    color: #7fdbca;
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-class .hljs-title {
+    color: #ffcb6b;
+}
+
+.hljs-meta {
+    color: #89ddff;
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: 600;
+}
