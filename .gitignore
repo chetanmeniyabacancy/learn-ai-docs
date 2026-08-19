@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Separate Laravel demo app, tracked in its own repository
+/level_1_demo

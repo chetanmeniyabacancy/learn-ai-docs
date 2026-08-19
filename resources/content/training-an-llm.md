@@ -1,16 +1,17 @@
 ## Summary
 
-- Three stages: **pretraining** (capability), **fine-tuning** (form), **preference tuning** (character).
-- Pretraining is where nearly all the cost is. A **base model** continues text but does not answer questions.
-- Four ways to make a model know your business: pretrain, fine-tune, **RAG**, prompt. Almost always RAG.
-- Fine-tuning teaches *how* to behave. It is bad at teaching *what* is true.
-- Knowledge in weights cannot be cited, permissioned, updated or deleted. Knowledge in context can be.
+- Training happens in three stages: **pretraining** gives the model its ability, **fine-tuning** gives it the shape of an assistant, and **preference tuning** gives it its character.
+- Almost all the money goes into pretraining. The result is a **base model**, which continues text but does not answer questions properly.
+- There are four ways to make a model know about your business: pretrain it, fine-tune it, use **RAG**, or just write a better prompt. The answer is nearly always RAG.
+- Fine-tuning is good at teaching *how* to behave. It is bad at teaching *what is true*.
+- Facts stored inside the weights cannot be quoted, permission-checked, updated or deleted. Facts you send in the request can be.
 
 ## The question you will be asked
 
 > "Can we train the AI on our data?"
 
-It sounds reasonable. It is usually wrong. You need to answer with numbers and an alternative, not a shrug.
+It sounds like a sensible question. Usually the answer is no. But you cannot just say no. You need to reply
+with real numbers and a better option.
 
 ## Three stages
 
@@ -32,13 +33,14 @@ It sounds reasonable. It is usually wrong. You need to answer with numbers and a
 
 ### Stage 1 — pretraining
 
-Self-supervised learning (module F2) at huge scale: predict the next token across a large slice of the public
-internet, books and code. Gradient descent (F3) on a transformer (F6), for months.
+This is self-supervised learning (module F2) at a huge size. The model guesses the next token across a large
+part of the public internet, plus books and code. It uses gradient descent (F3) on a transformer (F6), and it
+runs for months.
 
-This is where knowledge, grammar, code and reasoning come from. It is also where nearly all the cost is: tens
-to hundreds of millions of dollars.
+Everything the model knows comes from here: grammar, facts, code and reasoning. This stage also costs almost
+all the money, somewhere between tens and hundreds of millions of dollars.
 
-The result is a **base model**, and it is odd to use:
+What comes out is called a **base model**, and using it feels strange:
 
 ```text
 prompt:  "What is the capital of France?"
@@ -48,16 +50,16 @@ base model:
    Answer key: 1. Paris  2. Berlin…"
 ```
 
-Not wrong. It decided this looked like a worksheet and continued the worksheet. That is what it was trained to
-do.
+The model is not broken. It decided your text looked like a page from a worksheet, so it continued the
+worksheet. That is exactly what it was trained to do.
 
 ### Stage 2 — supervised fine-tuning
 
-Show it tens of thousands of `(instruction, good answer)` pairs written or checked by people. Ordinary
-supervised learning, tiny next to stage 1.
+Now you show the model tens of thousands of pairs: an instruction, and a good answer. People write or check
+these pairs. This is ordinary supervised learning, and it is tiny compared to stage 1.
 
-This teaches the *shape* of being an assistant: a question gets an answer, an instruction gets followed. The
-knowledge was already there.
+This stage teaches the model the *shape* of being an assistant. A question should get an answer. An instruction
+should be followed. The knowledge was already there from stage 1.
 
 ```text
 after SFT:  "The capital of France is Paris."
@@ -65,20 +67,22 @@ after SFT:  "The capital of France is Paris."
 
 ### Stage 3 — preference tuning
 
-Even after SFT a model can be wordy, over-agreeable, or willing to help with things it should not.
-"Helpful" is easy to recognise and very hard to write as a loss function.
+Even after stage 2, a model can talk too much, agree with everything you say, or help with things it should
+refuse. The problem is that "helpful" is easy for a human to recognise but almost impossible to write down as
+a formula.
 
-So: generate several answers, have humans rank them, train toward the preferred ones. That is **RLHF** and its
-relatives (DPO, constitutional methods).
+So the labs do this instead: create several answers to the same question, ask humans which answer is better,
+and train the model towards the answers people preferred. This is **RLHF**, and the same idea appears in
+related methods like DPO and constitutional training.
 
-This stage produces tone, honesty about uncertainty, and refusals. The `stop_reason: "refusal"` you handle in
-Level 1 module 1 was installed here.
+This stage creates the model's tone, its honesty when it is unsure, and its refusals. The
+`stop_reason: "refusal"` you handle in Level 1 module 1 was put there in this stage.
 
-> **Pretraining creates capability. SFT creates form. Preference tuning creates character.**
+> **Pretraining creates ability. Fine-tuning creates form. Preference tuning creates character.**
 
 ## So — can we train it on our data?
 
-Four options. Most people asking for the first need the third.
+You have four options. Most people who ask for the first one actually need the third one.
 
 | Approach | Cost | Time | Right when |
 |---|---|---|---|
@@ -89,17 +93,21 @@ Four options. Most people asking for the first need the third.
 
 ### Why RAG beats fine-tuning for knowledge
 
-Have this argument ready:
+Keep these five points ready for the meeting:
 
-- **Fine-tuning teaches behaviour well and facts badly.** Facts learned this way are diffuse and unreliable,
-  and get blended with half-remembered pretraining.
-- **Your data changes.** Update the handbook and RAG picks it up next request. Fine-tuning means retraining.
-- **You cannot cite a weight.** RAG shows which passage the answer came from.
-- **You cannot delete a weight.** Fine-tune on customer data, then get a deletion request. RAG deletes a row.
-- **You cannot permission a weight.** RAG filters by tenant in the query (Level 1 module 6).
+- **Fine-tuning teaches behaviour well, and facts badly.** Facts learned this way get spread thinly across the
+  weights and mixed up with things the model half-remembers from pretraining.
+- **Your data keeps changing.** If you edit the handbook, RAG uses the new version on the very next request.
+  With fine-tuning you would have to train again.
+- **You cannot quote a weight.** RAG can show the exact paragraph the answer came from.
+- **You cannot delete a weight.** Imagine you fine-tune on customer data, and then a customer asks you to
+  delete their data. With RAG you delete one row.
+- **You cannot apply permissions to a weight.** RAG filters by customer or tenant inside the query (Level 1
+  module 6).
 
-**When fine-tuning IS right:** a fixed output format prompting cannot reach; a domain writing style; a narrow
-task run millions of times where a small tuned model is cheaper. All three are about *how*, not *what*.
+**When fine-tuning IS the right choice:** you need an output format that prompting cannot reach reliably; you
+need a very specific writing style; or you run one narrow task millions of times and a small tuned model is
+cheaper. Notice that all three are about *how* the model behaves, not about *what* it knows.
 
 ## Knowledge in weights vs in context
 
@@ -113,7 +121,8 @@ task run millions of times where a small tuned model is cheaper. All three are a
 | Can be deleted | No | Yes |
 | Fresh | Frozen at cutoff | As fresh as your database |
 
-Your whole job in Level 1 is filling the second column. Prompting, tools and RAG are all ways to do that.
+Your entire job in Level 1 is filling the second column. Prompting, tools and RAG are three different ways of
+doing it.
 
 ## Numbers worth carrying
 
@@ -124,35 +133,38 @@ RAG over your handbook  a few hours of engineering, then cents per query
 a prompt change         minutes, free
 ```
 
-Four orders of magnitude between neighbouring rows. When someone proposes the top row, that is usually a
-misunderstanding.
+Each row is roughly ten thousand times cheaper than the row above it. So when somebody suggests the top row,
+it is almost always a misunderstanding.
 
 ## What this means for your API calls
 
-- **The weights are frozen.** Your prompts change nothing. No learning from usage.
-- **There is a training cutoff.** It does not know about last week, including your launch.
-- **Model versions are snapshots.** `claude-sonnet-5` is one fixed set of weights. Pin the exact ID in config.
-- **Refusals are trained behaviour**, not a filter added afterwards.
+- **The weights never change.** Your prompts do not teach the model anything. It does not learn from use.
+- **There is a training cutoff date.** It does not know about last week, including your own product launch.
+- **A model version is a fixed snapshot.** `claude-sonnet-5` is one exact set of weights. Pin that exact ID in
+  your config.
+- **Refusals are trained behaviour**, not a separate filter added on top afterwards.
 
 ## Common mistakes
 
-- Proposing fine-tuning for facts. Slower, dearer, less accurate, uncitable, undeletable.
-- Expecting the model to learn from production traffic.
-- Fine-tuning on customer data without thinking about deletion requests.
-- Assuming a new model knows about recent events. Check the cutoff.
-- Believing "trained on your data" without asking which stage. Usually it means RAG.
+- Suggesting fine-tuning to teach facts. It is slower, costlier, less accurate, and you cannot quote or delete
+  anything.
+- Expecting the model to learn from your production traffic.
+- Fine-tuning on customer data without thinking about deletion requests first.
+- Assuming a new model knows about recent events. Always check the cutoff.
+- Believing a vendor who says "trained on your data" without asking which stage they mean. It usually means
+  RAG.
 
 ## You should now be able to
 
-- [ ] Name the three stages and what each produces
+- [ ] Name the three stages and say what each one produces
 - [ ] Explain why a base model answers a question with more questions
-- [ ] Give four reasons RAG beats fine-tuning for company knowledge
-- [ ] State the cost gap between the four approaches
+- [ ] Give four reasons why RAG beats fine-tuning for company knowledge
+- [ ] State roughly how much the four approaches cost
 - [ ] Answer "can we train it on our data?" in under a minute
 
 ## Practice
 
-1. Write your company's answer to that question — three sentences, with a recommendation.
-2. Ask the model about something from last month. Watch the cutoff appear.
-3. List three things your company knows that no public model could. All belong in the context. That list is
-   your Level 1 backlog.
+1. Write your own company's answer to that question. Three sentences, ending with a recommendation.
+2. Ask the model about something that happened last month. Watch the training cutoff appear.
+3. List three things your company knows that no public model could know. All of them belong in the context.
+   That list is your Level 1 backlog.

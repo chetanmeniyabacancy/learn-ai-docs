@@ -1,10 +1,10 @@
 ## Summary
 
-- A neuron = multiply inputs by weights, add them up, bend the result. Three lines of code.
-- The **bend** (activation function) is essential. Without it, any depth collapses to one straight line.
-- **XOR** cannot be solved by one neuron. That is why hidden layers exist.
-- **Backpropagation** = pass the error backwards so every layer knows its share of the blame.
-- "70 billion parameters" = 70 billion numbers to multiply per token. That is the cost and speed trade-off.
+- One neuron does three small things: multiply each input by a weight, add everything up, then bend the result. It is three lines of code.
+- The **bend** (called an activation function) is the important part. Without it, even a thousand layers behave like one straight line.
+- One neuron cannot solve **XOR**. That limit is the reason hidden layers exist.
+- **Backpropagation** means sending the error backwards through the layers, so every layer learns how much of the mistake was its fault.
+- "70 billion parameters" means 70 billion numbers must be multiplied for every token. That is why big models cost more and reply slower.
 
 ## A neuron is three lines
 
@@ -21,21 +21,23 @@ function neuron(array $inputs, array $weights, float $bias): float
 }
 ```
 
-1. **Multiply** each input by its weight — how much that input matters.
-2. **Add** them up, plus a bias — the neuron's baseline.
-3. **Bend** the result through an activation function.
+1. **Multiply** each input by its weight. The weight says how important that input is.
+2. **Add** the results together, plus a bias. The bias is the neuron's starting point.
+3. **Bend** the total using an activation function.
 
-The weights and bias are the parameters. Gradient descent adjusts them (module F3). A neuron with 5 inputs
-stores 6 numbers.
+The weights and the bias are the parameters. They are the numbers that training changes, using the same
+downhill method from module F3. A neuron with 5 inputs holds 6 numbers: five weights and one bias.
 
 ## Why the bend matters
 
-This step is usually skipped, and it is why deep learning works at all.
+People usually skip this step, but it is the reason deep learning works at all.
 
-Without step 3 a neuron is `w·x + b` — a straight line. Stack two, still a line. Stack a thousand, still a
-line. A million-layer network with no activation is exactly as powerful as one line of algebra.
+Without step 3, a neuron is only `w·x + b`, which is a straight line. Put two of them together and you still
+have a straight line. Put a thousand together and you *still* have a straight line. So a network with a
+million layers and no bend is exactly as powerful as one line of school algebra.
 
-The bend breaks that. It lets stacked layers make curves and corners.
+The bend removes that limit. Once each layer bends its output a little, stacked layers can make curves and
+corners, and curves can describe real-world data.
 
 | Activation | Formula | Where |
 |---|---|---|
@@ -45,12 +47,13 @@ The bend breaks that. It lets stacked layers make curves and corners.
 | **GELU** | smooth ReLU | What transformers use. |
 | **Softmax** | normalise to sum 1 | Scores → probabilities. Module F6. |
 
-ReLU is just "if negative, zero", and it is most of modern deep learning.
+ReLU only says "if the number is negative, make it zero". That tiny rule is inside most of modern deep
+learning.
 
 ## From one neuron to a network
 
-**A layer** = several neurons reading the same inputs.
-**A network** = layers in sequence, each reading the last one's output.
+**A layer** is several neurons that all read the same inputs.
+**A network** is layers placed one after another, where each layer reads the output of the layer before it.
 
 ```text
    inputs         hidden layer      output
@@ -67,15 +70,17 @@ ReLU is just "if negative, zero", and it is most of modern deep learning.
                     16 parameters total
 ```
 
-**Depth** = number of layers. That is what "deep learning" means. Early layers learn simple things; later
-layers combine them. In an image network: layer 1 finds edges, the middle finds shapes, the end finds faces.
-Nobody programmed that. It emerges from training.
+**Depth** means how many layers you have. That word is where "deep learning" comes from. The early layers
+learn simple things, and the later layers join those simple things into bigger ideas. In a network that looks
+at photos, the first layer finds edges, the middle layers find shapes, and the last layers find faces. Nobody
+programmed that order. It appears on its own during training.
 
-Claude has hundreds of billions of parameters in many layers. Each one does the arithmetic above.
+Claude has hundreds of billions of parameters spread over many layers. Every single one is doing the small
+multiply-add-bend above.
 
 ## Why one layer is not enough: XOR
 
-One neuron can learn AND, and OR:
+A single neuron can learn AND, and it can learn OR:
 
 ```text
 AND                    OR
@@ -85,9 +90,10 @@ AND                    OR
 1,1 → 1                1,1 → 1
 ```
 
-Both can be split by one straight line. A neuron *is* a straight line, so it can learn them.
+In both cases you can draw one straight line that separates the 0 answers from the 1 answers. A neuron *is*
+basically a straight line, so it can learn both.
 
-XOR cannot:
+XOR is different:
 
 ```text
 XOR                      1 │  ●(1)      ○(0)
@@ -100,18 +106,21 @@ XOR                      1 │  ●(1)      ○(0)
                  No single straight line separates ● from ○.
 ```
 
-In 1969 this nearly killed neural network research for a decade. The fix is one hidden layer: it reshapes the
-space, and in the new space a line *does* work.
+No straight line can separate them. When this was proved in 1969, research on neural networks almost stopped
+for ten years. The fix is to add one hidden layer. That layer rearranges the data into a new shape, and in
+that new shape a straight line *does* work.
 
-This module's example shows the single neuron stuck at 50% — a coin flip — and the two-layer version at 100%.
+The example for this module shows a single neuron stuck at 50% accuracy, which is the same as tossing a coin,
+and the two-layer version reaching 100%.
 
 ## Backpropagation, without calculus
 
-Module F3 nudged two parameters. A network has millions across layers. How does a weight in layer 1 know how
-much it caused an error at the output?
+In module F3 we adjusted only two numbers. A real network has millions of them, spread across layers. So how
+does a weight in layer 1 know how much it caused a mistake at the very end?
 
-**Backpropagation**: compute the error at the output, pass it backwards layer by layer, work out each
-parameter's share of the blame. Then every parameter steps downhill, as before.
+**Backpropagation** is the answer. First you measure the error at the output. Then you pass that error
+backwards, layer by layer, working out how much each parameter is responsible for it. After that, every
+parameter takes one small step downhill, exactly like before.
 
 ```text
 forward   inputs → layer 1 → layer 2 → output → loss
@@ -119,39 +128,41 @@ backward                 ← ← ← ← ← ← ← blame
 update    every weight steps against its own gradient
 ```
 
-You will never implement this — PyTorch and friends do it automatically. Just hold the model: **it is still
-the same loop from module F3, with blame shared across layers.**
+You will never write this yourself. PyTorch and similar libraries do it for you. Just keep the picture in your
+head: **it is still the same loop from module F3, with the blame divided between the layers.**
 
 ## What this buys you
 
-You will not build one of these at work. Knowing the mechanism still changes four things:
+You will not build a network at work. But understanding the machinery changes how you answer four common
+questions:
 
-- **"70 billion parameters"** = 70 billion numbers, learned by gradient descent, that must fit in GPU memory
-  and be multiplied per token. That is why bigger models cost more and run slower.
-- **"Why can't it just be accurate?"** There is no lookup table. The answer is computed through billions of
-  weights. There is nothing to look a fact up *in*.
-- **Explainability is genuinely hard**, not laziness. A decision is spread over billions of numbers. That is
-  why regulated work often still uses logistic regression.
-- **Model size vs task** makes sense. Haiku has fewer parameters: cheaper, faster, weaker at hard reasoning.
-  That is Level 1's model table.
+- **"What does 70 billion parameters mean?"** It means 70 billion learned numbers that must sit in GPU memory
+  and be multiplied for every token. That is exactly why bigger models cost more and run slower.
+- **"Why can't it just be accurate?"** Because there is no table of facts inside. The answer is calculated
+  through billions of weights. There is nothing to look a fact up *in*.
+- **"Why can't you explain the decision?"** Because the decision is spread across billions of numbers. This is
+  a real technical limit, not laziness. It is why banks and insurers often still use logistic regression.
+- **"Why choose a smaller model?"** Haiku has fewer parameters, so it is cheaper and faster, but weaker at hard
+  reasoning. That is the trade-off behind Level 1's model table.
 
 ## Common mistakes
 
-- Thinking neurons are like brain cells. It is a 1940s analogy. It is a weighted sum with a bend.
-- Forgetting the activation function. Without it, depth is worthless.
-- Assuming deeper is always better. More layers = more data needed, more overfitting.
-- Expecting to read the weights. You cannot look at neuron 4,201 and learn what it means.
+- Thinking a neuron works like a brain cell. That comparison is from the 1940s. It is really just a weighted
+  sum with a bend.
+- Forgetting the activation function. Without it, extra layers add nothing.
+- Assuming that deeper is always better. More layers need more data and memorise more easily.
+- Expecting to read meaning from the weights. You cannot open neuron 4,201 and see what it stands for.
 
 ## You should now be able to
 
 - [ ] Write a neuron in three lines and name its parameters
-- [ ] Explain why no activation = one line of algebra
-- [ ] Use XOR to explain hidden layers
-- [ ] Describe backpropagation as blame flowing backwards
+- [ ] Explain why a network with no activation is only one line of algebra
+- [ ] Use XOR to explain why hidden layers are needed
+- [ ] Describe backpropagation as blame travelling backwards
 - [ ] Say what "70 billion parameters" means for cost and speed
 
 ## Practice
 
-1. Run the perceptron example. Watch weights go from noise to solving AND.
-2. Point it at XOR. Watch it stall at 50%.
-3. Count the parameters in a 3 → 4 → 1 network by hand. (3×4 + 4 + 4×1 + 1 = 21.) Now scale to 70 billion.
+1. Run the perceptron example. Watch the weights start as random noise and end up solving AND.
+2. Point the same code at XOR. Watch it get stuck at 50%.
+3. Count the parameters in a 3 → 4 → 1 network by hand. (3×4 + 4 + 4×1 + 1 = 21.) Now imagine 70 billion.

@@ -1,30 +1,32 @@
 ## Summary
 
-- Treat the model as a slow, rate-limited, per-request-billed external API. Everything follows from that.
-- **User waiting → stream. Nobody waiting → queue.** One job per item, never per batch.
-- Retry 429, 5xx and timeouts. **Never retry a 400.**
-- **Prompt caching** cuts repeated prefixes to ~10% cost — but stable content must come first.
-- Log every call: feature, prompt version, model, tokens, latency, cost, stop reason.
-- Always have a non-AI fallback.
+- Treat the model as an external API that is slow, rate-limited, and billed per request. Everything else in this module follows from that.
+- If a user is waiting, **stream**. If nobody is waiting, **queue**. Create one job per item, never one job per batch.
+- Retry on 429, on 5xx, and on timeouts. **Never retry a 400.**
+- **Prompt caching** cuts the cost of a repeated opening section to about 10%, but the stable part must come first.
+- Log every call: feature, prompt version, model, tokens, latency, cost and stop reason.
+- Always have a fallback that does not use AI.
 
 ## The problem
 
-The demo was perfect. Then it launched.
+The demo went perfectly. Then you launched.
 
-- Users stare at a spinner for eight seconds and assume it is broken.
-- A queue worker times out and retries the *entire* batch.
-- A 429 during a spike surfaces straight to customers.
-- Finance asks what the $2,400 line item is and you cannot break it down.
-- Someone says "it feels worse this week" and you cannot check.
+- Users watch a spinner for eight seconds and decide the page is broken.
+- A queue worker times out and retries the *whole* batch.
+- A 429 arrives during a busy hour and the raw error reaches customers.
+- Finance asks what the $2,400 line is, and you cannot break it down.
+- Someone says "it feels worse this week" and you have no way to check.
 
-None of this is AI-specific. It is normal integration work with an unusually expensive, slow, chatty
-dependency.
+None of this is really about AI. It is normal integration work with a dependency that happens to be slow,
+expensive and talkative.
 
 ## Latency: stream or queue
 
-A model generates tokens one at a time. A 500-word answer takes seconds and you cannot make that small.
+The model produces tokens one at a time. A 500-word answer takes several seconds, and you cannot make that
+much faster.
 
-**User waiting → stream.** Same total time, first words in under a second.
+**If a user is waiting, stream the answer.** The total time is the same, but the first words appear in under a
+second, so the page feels alive.
 
 ```php
 Route::get('/assistant/stream', function (Request $request) {
@@ -53,10 +55,10 @@ Route::get('/assistant/stream', function (Request $request) {
 });
 ```
 
-`X-Accel-Buffering` is the header everyone loses an afternoon to. Without it nginx delivers the whole stream
-at once, which looks exactly like streaming not working.
+`X-Accel-Buffering` is the header that costs people an afternoon. Without it, nginx holds the whole stream and
+delivers it in one go, which looks exactly like streaming being broken.
 
-**Nobody waiting → queue.** Batch classification, indexing, overnight summaries.
+**If nobody is waiting, use a queue.** That covers batch classification, indexing and overnight summaries.
 
 ```php
 class ClassifyTicket implements ShouldQueue
@@ -72,7 +74,8 @@ class ClassifyTicket implements ShouldQueue
 }
 ```
 
-One job per item, not per batch. A failure then retries one ticket instead of re-billing you for four hundred.
+Make one job per item, not one job per batch. Then a failure retries one ticket, instead of charging you again
+for four hundred.
 
 ## Failure: retry the right things
 
@@ -84,8 +87,9 @@ One job per item, not per batch. A failure then retries one ticket instead of re
 | 401 | Bad key | **Do not retry** — page someone |
 | Timeout | Slow generation | Retry, or lower `maxTokens` |
 
-The SDK already retries connection errors, 429 and 5xx a couple of times. Beyond that, add a circuit breaker
-so a provider outage degrades your app instead of hanging every worker:
+The SDK already retries connection errors, 429s and 5xx errors a couple of times. On top of that, add a circuit
+breaker. Then an outage at the provider makes your app degrade politely instead of leaving every worker
+hanging:
 
 ```php
 public function ask(string $prompt): string
@@ -109,12 +113,12 @@ public function ask(string $prompt): string
 }
 ```
 
-And always have a non-AI fallback. If the assistant is down, show the search box and the contact form.
+And always keep a non-AI fallback. If the assistant is down, show the search box and the contact form.
 
 ## Cost: four levers
 
-**1. Prompt caching.** If a long, stable prefix repeats — a big system prompt, a fixed document, few-shot
-examples — mark it and pay about a tenth for those tokens next time.
+**1. Prompt caching.** If the same long opening section repeats on every call — a big system prompt, a fixed
+document, a set of examples — mark it as cacheable. Next time you pay about one tenth for those tokens.
 
 ```php
 $message = $client->messages->create(
@@ -132,15 +136,16 @@ Log::info('cache', [
 ]);
 ```
 
-**Caching is a prefix match.** One changed byte before the cache point invalidates everything after it. So:
-stable content first, volatile content last. Putting `now()` or a user's name at the top of your system prompt
-silently disables caching on every request, and the only symptom is a bigger bill.
+**Caching works by matching the beginning of the prompt.** If one single byte before the cache point changes,
+everything after it is invalid. So put stable content first and changing content last. Putting `now()` or the
+user's name at the top of your system prompt quietly turns caching off on every request, and the only symptom
+you will notice is a bigger bill.
 
-**2. Right-size the model.** Haiku for classification, Sonnet for the assistant, Opus for the rare hard case.
-That mix routinely halves a bill with no quality loss.
+**2. Use the right size of model.** Haiku for classification, Sonnet for the assistant, Opus for the rare hard
+case. This mix often halves a bill with no drop in quality.
 
-**3. Send fewer tokens.** Retrieve 4 chunks not 10. Trim conversation history. Summarise old context. Input
-tokens are most of most bills.
+**3. Send fewer tokens.** Retrieve 4 chunks instead of 10. Trim the conversation history. Summarise old
+context. Input tokens are the largest part of most bills.
 
 **4. Cache identical requests.**
 
@@ -149,11 +154,11 @@ return Cache::remember('triage:'.sha1($text.TriagePrompt::VERSION), now()->addDa
     fn () => $this->triage($text));
 ```
 
-Include the prompt version in the key. Otherwise your prompt fix does nothing for a day.
+Put the prompt version in the cache key. Otherwise your prompt fix does nothing for a whole day.
 
 ## Observability
 
-If you build one thing from this module, build this.
+If you build only one thing from this module, build this table.
 
 ```php
 Schema::create('ai_calls', function (Blueprint $table) {
@@ -175,19 +180,19 @@ Schema::create('ai_calls', function (Blueprint $table) {
 });
 ```
 
-Now these become SQL instead of arguments:
+With it, these questions become SQL queries instead of arguments in a meeting:
 
 - Which feature is 80% of the bill?
-- Did p95 latency move when we switched models?
-- How many answers hit `max_tokens` and were silently truncated?
+- Did p95 latency change when we switched models?
+- How many answers hit `max_tokens` and got cut off without anyone noticing?
 - Is prompt v4 cheaper than v3 at the same quality?
-- Which user is 30% of yesterday's spend?
+- Which single user is 30% of yesterday's spend?
 
-Add a small dashboard: spend per day per feature, p50/p95 latency, error rate, cache hit rate. An afternoon of
-work, and the difference between operating a system and hoping.
+Then add a small dashboard: spend per day per feature, p50 and p95 latency, error rate, and cache hit rate. It
+is an afternoon of work, and it is the difference between operating a system and hoping.
 
-> Alert on **daily spend** and **error rate**, not just exceptions. The failure that hurts is a loop that works
-> perfectly and costs $900 overnight.
+> Set alerts on **daily spend** and **error rate**, not only on exceptions. The failure that really hurts is a
+> loop that works perfectly and costs $900 overnight.
 
 ## A production-shaped service
 
@@ -224,27 +229,27 @@ class Assistant
 
 ## Common mistakes
 
-- **Synchronous calls in a web request** with a user watching and no streaming.
-- **Volatile content at the top of the prompt**, silently killing the cache.
-- **Retrying 400s.** Three times the failure, three times the bill.
-- **Batch jobs as one job.** One bad row re-runs four hundred good ones.
-- **No spend alert.** You find out on the invoice.
-- **No prompt version in the logs.** Quality moved; you cannot attribute it.
-- **Raw API errors reaching users.** "Overloaded" is not a customer-facing sentence.
+- **Calling the API synchronously inside a web request** while a user watches and nothing is streamed.
+- **Putting changing content at the top of the prompt**, which silently kills caching.
+- **Retrying 400 errors.** You get the same failure three times, and pay three times.
+- **Running a whole batch as one job.** One bad row makes four hundred good rows run again.
+- **No spend alert.** You find out when the invoice arrives.
+- **No prompt version in the logs.** Quality changed, and you cannot say which change did it.
+- **Raw API errors shown to users.** "Overloaded" is not a sentence a customer should read.
 
 ## You should now be able to
 
-- [ ] Choose streaming or queueing per feature
-- [ ] Retry the right errors and break the circuit on the rest
-- [ ] Use prompt caching correctly and explain prefix order
+- [ ] Decide between streaming and queueing for each feature
+- [ ] Retry the right errors and open a circuit breaker for the rest
+- [ ] Use prompt caching correctly, and explain why order matters
 - [ ] Log tokens, cost, latency and prompt version on every call
-- [ ] Give every AI feature a non-AI fallback
+- [ ] Give every AI feature a fallback that does not use AI
 
 ## Practice
 
 1. Add the `ai_calls` table and log every call from now on.
-2. Convert one synchronous call to streaming. Time the first word.
-3. Move a batch job to per-item queued jobs with backoff and a timeout.
-4. Turn on prompt caching for your longest system prompt. Check `cacheReadInputTokens` on the second call. If
-   it is zero, something before the cache point is changing.
-5. Set a daily spend alert. Today.
+2. Convert one synchronous call to streaming. Measure how long until the first word appears.
+3. Turn a batch job into per-item queued jobs, with backoff and a timeout.
+4. Turn on prompt caching for your longest system prompt. Check `cacheReadInputTokens` on the second call. If it
+   is zero, something before the cache point is changing.
+5. Set a daily spend alert. Do it today.

@@ -1,17 +1,18 @@
 ## Summary
 
-- Choose storage by **row count**, not fashion. Under 5,000 vectors: a JSON column and a PHP loop.
-- 5k–1M: **pgvector**. Filters and vector search in one SQL statement.
-- Store metadata with every vector — especially `tenant_id` and `visibility`.
-- **Permissions belong in the query**, never in the prompt.
-- **K = 3–5.** More chunks means more cost and worse answers.
-- Change the embedding model and every vector must be rebuilt. Write the reindex command on day one.
+- Choose your storage by **how many rows you have**, not by what is popular. Under 5,000 vectors, a JSON column and a PHP loop is enough.
+- Between 5,000 and 1 million, use **pgvector**. You get filters and vector search in one SQL statement.
+- Save metadata next to every vector, especially `tenant_id` and `visibility`.
+- **Permission checks belong in the query**, never in the prompt.
+- **Keep K between 3 and 5.** More chunks means more cost and usually worse answers.
+- If you change the embedding model, every old vector must be rebuilt. Write the reindex command on day one.
 
 ## The problem
 
-The module 5 search works on 50 articles. Then legal asks you to make 100,000 contract pages searchable.
+The search you built in module 5 works nicely on 50 articles. Then the legal team asks you to make 100,000
+pages of contracts searchable.
 
-`Article::all()` now loads 100,000 rows and 150 million floats into PHP memory on every keystroke.
+Now `Article::all()` loads 100,000 rows and 150 million floats into PHP memory on every keystroke.
 
 ## Pick by scale
 
@@ -22,7 +23,7 @@ The module 5 search works on 50 articles. Then legal asks you to make 100,000 co
 | 1M+ | Qdrant, Pinecone, Weaviate | Purpose-built ANN indexes, horizontal scale. |
 | Any, already running it | Meilisearch / Elasticsearch | Hybrid keyword + vector in a tool you operate. |
 
-Most Laravel apps live in the first two rows forever. Be honest about which you are in.
+Most Laravel apps stay in the first two rows forever. Be honest about which row you are actually in.
 
 ## Level 1: a column and a loop
 
@@ -53,8 +54,9 @@ public function search(string $query, int $limit = 5): Collection
 }
 ```
 
-Two details buy a lot of headroom: select only the columns you need, and apply every SQL filter *before*
-scoring. Filtering 100,000 rows down to 2,000 then looping is a different proposition entirely.
+Two small details give you a lot of extra room. First, select only the columns you need. Second, apply every SQL
+filter *before* you start scoring. Cutting 100,000 rows down to 2,000 and then looping is a completely different
+situation from looping over all of them.
 
 ## Level 2: pgvector
 
@@ -80,21 +82,23 @@ $results = DB::select('
 ', [$vector, $teamId, $vector]);
 ```
 
-`<=>` is cosine distance, so `1 - distance` is similarity. Notice `AND team_id = ?` in the same statement:
-**metadata filtering and vector search in one query, with your normal transactions and backups.** That is why
-pgvector is the right answer more often than people assume.
+The `<=>` operator gives cosine distance, so `1 - distance` gives you similarity. Look closely at
+`AND team_id = ?` sitting in the same statement. **You get metadata filtering and vector search in one query,
+with your normal transactions and backups.** That is why pgvector is the right answer far more often than people
+expect.
 
 | Index | Build | Query | Use when |
 |---|---|---|---|
 | `ivfflat` | Fast | Good | Bulk-loaded, rebuilt occasionally |
 | `hnsw` | Slower, more memory | Faster, more accurate | Most production work |
 
-Both are *approximate*. You trade a fraction of a percent of recall for a huge speed gain — nearly always
-right for search, and worth knowing you made the trade.
+Both indexes are *approximate*. You lose a tiny fraction of a percent of accuracy and gain a huge amount of
+speed. For search that trade is almost always correct, but you should know you made it.
 
 ## Metadata
 
-A vector store is useless if you cannot say *which* vectors to search. Store filters from day one:
+A vector store is useless if you cannot say *which* vectors to search. So store your filters from the very
+first day:
 
 ```php
 [
@@ -110,60 +114,64 @@ A vector store is useless if you cannot say *which* vectors to search. Store fil
 ]
 ```
 
-`tenant_id` and `visibility` cause the incidents when missing. A cross-tenant vector search is a data breach
-that looks like a relevance bug — hard to spot in testing, because the results still look plausible.
+The two fields that cause real incidents when missing are `tenant_id` and `visibility`. A vector search that
+crosses between tenants is a data breach that looks exactly like a relevance bug. It is very hard to notice in
+testing, because the wrong results still look reasonable.
 
-**Permissions must be enforced here**, in the `WHERE` clause. Not in the prompt. If a user cannot read a
-document in your app, it must never enter their prompt.
+**Permissions must be enforced right here**, in the `WHERE` clause. Not in the prompt. If a user cannot open a
+document inside your app, that document must never enter their prompt.
 
 ## What K should be
 
-K = how many chunks you put in the prompt.
+K means how many chunks you put into the prompt.
 
-- **K = 3–5** is normal.
-- More chunks cost more tokens and dilute the signal, lowering quality.
-- If the right chunk is never in your top 5, fix chunking or retrieval — not K.
+- **K = 3 to 5** is normal.
+- More chunks cost more tokens and water down the useful signal, so answers get worse.
+- If the correct chunk never appears in your top 5, the fix is better chunking or better retrieval. Raising K is
+  not the fix.
 
-Measure it: for 20 real questions, is the passage containing the answer in the top 5? That number (recall@5)
-is the most useful metric in RAG. Module 8 shows how to track it.
+Measure it properly. Take 20 real questions and check whether the passage containing the answer is in the top 5.
+That percentage is called recall@5, and it is the most useful number in RAG. Module 8 shows how to track it.
 
 ## Reindexing
 
-**Change the embedding model and every existing vector becomes meaningless.** They live in a different space;
-comparing them returns nonsense rather than an error.
+**If you change the embedding model, every existing vector becomes meaningless.** The new model uses a different
+space, so comparing old and new vectors returns nonsense instead of an error. That silence is what makes it
+dangerous.
 
-So:
+So do three things:
 
-- Store the model name with the vector.
-- Make reindexing a routine artisan command.
-- Reindex into a new column, verify, then switch.
+- Store the model name next to every vector.
+- Make reindexing a normal artisan command.
+- Reindex into a new column, check the results, and only then switch over.
 
 ```bash
 php artisan embeddings:reindex --model=voyage-3 --chunk=200
 ```
 
-Write that command the day you build the feature.
+Write that command on the same day you build the feature.
 
 ## Common mistakes
 
-- **Reaching for Pinecone at 800 documents.** A JSON column would have done.
-- **`SELECT *` in the scoring loop.** You loaded every body column to sort by one float.
-- **No tenant filter.** Silent cross-customer leakage.
-- **Filtering after retrieval.** Ask for 5, throw 4 away for permissions, answer from 1. Filter first.
-- **Mixed models in one table.** Half your search compares incomparable numbers.
-- **No reindex path.** Every model upgrade becomes a project.
+- **Reaching for Pinecone when you have 800 documents.** A JSON column would have been enough.
+- **Using `SELECT *` in the scoring loop.** You just loaded every body column in order to sort by one float.
+- **No tenant filter.** This leaks data between customers, quietly.
+- **Filtering after retrieval.** You ask for 5 chunks, throw 4 away for permission reasons, and answer from 1.
+  Filter first.
+- **Two models mixed in one table.** Half your searches are comparing numbers that mean different things.
+- **No way to reindex.** Every model upgrade turns into a project.
 
 ## You should now be able to
 
-- [ ] Choose storage from your actual row count
+- [ ] Choose storage based on your real row count
 - [ ] Write a pgvector query with metadata filters
-- [ ] Explain why permissions belong in retrieval, not the prompt
-- [ ] Pick a sensible K and measure recall@K
-- [ ] Ship a reindex command with the feature
+- [ ] Explain why permissions belong in retrieval, not in the prompt
+- [ ] Choose a sensible K and measure recall@K
+- [ ] Ship a reindex command together with the feature
 
 ## Practice
 
-1. Count the rows you would embed. Pick a row from the table and write down why.
-2. Add `tenant_id` and `visibility` to your metadata now, before there is data to migrate.
-3. Take 20 real questions and check the right passage is in the top 5. Record the number.
-4. If you have Postgres, install pgvector and port your PHP loop to SQL. Compare timings at 10,000 rows.
+1. Count the rows you would need to embed. Pick a row from the table above and write down why it fits.
+2. Add `tenant_id` and `visibility` to your metadata now, while there is no data to migrate.
+3. Take 20 real questions and check that the right passage is in the top 5. Write the number down.
+4. If you have Postgres, install pgvector and move your PHP loop into SQL. Compare the timings at 10,000 rows.
