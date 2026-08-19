@@ -1,21 +1,21 @@
 ## Summary
 
-- An **embedding** turns text into a vector so similar *meanings* land close together.
-- **Cosine similarity** measures closeness. Ten lines of PHP.
-- **Anthropic has no embeddings endpoint.** Use Voyage AI, OpenAI, Cohere or a local model.
-- Two phases: **index** documents offline (queued), **embed the query** online.
-- Embeddings are bad at exact identifiers. Use SQL for `ORD-1043`.
+- An **embedding** turns text into a list of numbers, arranged so that texts with a similar *meaning* end up close together.
+- **Cosine similarity** measures how close two of them are. It is about ten lines of PHP.
+- **Anthropic has no embeddings endpoint.** You need Voyage AI, OpenAI, Cohere, or a local model.
+- There are two phases: **index** your documents in the background, and **embed the question** when the user asks it.
+- Embeddings are bad at exact codes. For `ORD-1043`, use SQL.
 
 ## The problem
 
-Your help centre has 400 articles. A customer searches:
+Your help centre has 400 articles. A customer searches for:
 
 > I can't get into my account
 
-Your search runs `WHERE title LIKE '%get into my account%'` and returns nothing. The article that solves it is
-called **"Resetting a forgotten password"**. Not one word in common.
+Your search runs `WHERE title LIKE '%get into my account%'` and finds nothing. But the article that solves this
+problem is called **"Resetting a forgotten password"**. The two texts share no words at all.
 
-So the customer contacts support, and you pay a human to send a link to a page you already published.
+So the customer contacts support, and you pay a human to send a link to a page you already wrote.
 
 ## What a vector is
 
@@ -25,7 +25,7 @@ $vector = $embedder->embed('How do I reset my password?');
 // [0.0231, -0.0512, 0.1140, ..., 0.0087]  — typically 512 to 1536 floats
 ```
 
-The numbers mean nothing on their own. Direction is what matters.
+Each number on its own means nothing. What matters is the direction the whole list points in.
 
 | Text | Direction |
 |---|---|
@@ -33,11 +33,12 @@ The numbers mean nothing on their own. Direction is what matters.
 | "I forgot my login details" | ← almost the same way |
 | "What are your delivery times?" | somewhere else |
 
-No shared words between the first two. Very close vectors. That is the whole trick.
+The first two sentences share no words, but their vectors point almost the same way. That is the whole trick.
 
 ## Measuring closeness
 
-Cosine similarity — the angle between two vectors. `1.0` = same direction, `0.0` = unrelated.
+Cosine similarity measures the angle between two vectors. `1.0` means they point the same way, and `0.0` means
+they are unrelated.
 
 ```php
 function cosineSimilarity(array $a, array $b): float
@@ -56,13 +57,14 @@ function cosineSimilarity(array $a, array $b): float
 
 That is all the maths in this module.
 
-> Rough guide (varies by model): **> 0.8** same topic, **0.6–0.8** related, **< 0.5** probably noise.
-> Calibrate on your own data, not a blog post.
+> A rough guide, which changes from model to model: **above 0.8** means the same topic, **0.6 to 0.8** means
+> related, and **below 0.5** is probably noise. Check these numbers against your own data, not against a blog
+> post.
 
 ## Where embeddings come from
 
-**Anthropic does not sell an embeddings endpoint.** Claude generates text; it does not vectorise it. Worth
-knowing before you design an architecture.
+**Anthropic does not sell an embeddings endpoint.** Claude writes text. It does not turn text into vectors. It
+is worth knowing this before you design your architecture.
 
 | Option | Notes |
 |---|---|
@@ -71,8 +73,9 @@ knowing before you design an architecture.
 | **Cohere Embed** | Good multilingual support. |
 | **Local (Ollama, ONNX)** | No per-call cost, no data leaves your servers, more ops work. |
 
-Embedding is cheap — a few cents per million tokens, far below generation. Cost is rarely the deciding factor;
-data residency and latency usually are.
+Embedding is cheap, a few cents per million tokens, which is far less than generating text. So cost is rarely
+what decides your choice. Usually it comes down to where your data is allowed to live, and how fast you need
+the response.
 
 ```php
 namespace App\Services;
@@ -101,11 +104,12 @@ class Embedder
 }
 ```
 
-Batch your calls. 100 texts in one request is far faster and cheaper than 100 requests.
+Always send your texts in batches. Sending 100 texts in one request is much faster and cheaper than making 100
+separate requests.
 
 ## The two-phase pattern
 
-**Phase 1 — index (offline, when documents change):**
+**Phase 1 — index your documents.** This runs in the background, whenever a document changes:
 
 ```php
 class EmbedArticle implements ShouldQueue
@@ -124,9 +128,10 @@ class EmbedArticle implements ShouldQueue
 }
 ```
 
-Hook it to the model's `saved` event. A stale embedding is a silently wrong search result — the worst kind.
+Trigger this from the model's `saved` event. An out-of-date embedding gives you a wrong search result with no
+error message, and that is the worst kind of bug.
 
-**Phase 2 — search (per query):**
+**Phase 2 — search.** This runs each time somebody asks a question:
 
 ```php
 public function search(string $query, int $limit = 5): Collection
@@ -144,12 +149,12 @@ public function search(string $query, int $limit = 5): Collection
 }
 ```
 
-Yes — this loads every article and scores it in PHP. For a few thousand rows that is fine, and it is the
-honest place to start. Module 6 covers what to do when it is not.
+Yes, this loads every article and scores it inside PHP. For a few thousand rows that is perfectly fine, and it
+is an honest place to start. Module 6 explains what to do when it stops being fine.
 
 ## Semantic, keyword, or both
 
-Semantic search does not replace what you have. It is a different tool.
+Semantic search does not replace the search you already have. It is a different tool for a different job.
 
 | Query | Best served by |
 |---|---|
@@ -158,33 +163,34 @@ Semantic search does not replace what you have. It is a different tool.
 | "I can't get into my account" | Semantic |
 | "refund policy for damaged goods" | **Both** — hybrid |
 
-Hybrid search — run keyword and semantic, merge — beats either alone on most real data. Exact identifiers are
-where embeddings are weakest: `ORD-1043` and `ORD-1044` are nearly identical vectors and completely different
-orders. Never let vector search answer a question about a specific record. That is what module 4's tools are
-for.
+Hybrid search means running keyword search and semantic search together and merging the results. On real data
+it usually beats either one alone. Exact codes are the weakest spot for embeddings: `ORD-1043` and `ORD-1044`
+produce almost identical vectors but are completely different orders. So never let vector search answer a
+question about one specific record. That is exactly what the tools in module 4 are for.
 
 ## Common mistakes
 
-- **Embedding whole documents.** A 40-page PDF becomes one vector meaning "vaguely about everything". Chunk
-  first — module 7.
-- **Mixing models.** Vectors from different models are not comparable. Store the model name with the vector.
-- **Stale vectors.** The article was edited; the embedding was not.
-- **Expecting exact matching.** Product codes and SKUs: use SQL.
-- **Ignoring language mix.** Check the model handles your languages before indexing 200,000 rows.
+- **Embedding a whole document as one vector.** A 40-page PDF becomes a single vector that means "vaguely about
+  everything". Cut it into chunks first — that is module 7.
+- **Mixing models.** Vectors from two different models cannot be compared. Always store the model name next to
+  the vector.
+- **Out-of-date vectors.** Somebody edited the article, but nothing re-embedded it.
+- **Expecting exact matching.** For product codes and SKUs, use SQL.
+- **Forgetting about languages.** Check that the model handles your languages before you index 200,000 rows.
 
 ## You should now be able to
 
-- [ ] Explain an embedding in one sentence with no maths
+- [ ] Explain an embedding in one sentence, with no maths
 - [ ] Write cosine similarity from memory
-- [ ] Say why Anthropic is not in your embeddings pipeline
-- [ ] Split work into index-time and query-time
-- [ ] Choose semantic, keyword or hybrid per query
+- [ ] Say why Anthropic is not part of your embeddings pipeline
+- [ ] Split the work into index-time and query-time
+- [ ] Choose semantic, keyword or hybrid search for a given query
 
 ## Practice
 
-1. Embed "How do I reset my password?", "I forgot my login details" and "What are your delivery times?".
-   Confirm the first two are close.
-2. Index 50 rows from a real text table. Compare semantic search against your `LIKE` search.
-3. Find a query where keyword search wins. Understanding *why* is the point.
-4. On the **Live run** page, panel 4 uses TF-IDF, not embeddings. Ask "I can't get into my account" and watch a
-   keyword scorer struggle. Then ask "password reset". That gap is what embeddings close.
+1. Embed "How do I reset my password?", "I forgot my login details" and "What are your delivery times?". Check
+   that the first two are close together.
+2. Index 50 rows from a real text table. Compare semantic search with your existing `LIKE` search.
+3. Find a query where keyword search wins. Understanding *why* it wins is the point of the exercise.
+4. On the **Live run** page, panel 4 uses TF-IDF instead of embeddings. Ask "I can't get into my account" and
+   watch a keyword scorer struggle. Then ask "password reset". That gap is what embeddings close.

@@ -1,22 +1,22 @@
 ## Summary
 
-- You need a test suite for output that is never identical twice: fixed inputs, a grader, a number.
-- Three grading tiers, cheapest first: **assertions**, **property checks**, **LLM-as-judge**.
-- A **golden dataset** of 20 real inputs beats 200 invented ones.
-- For RAG, measure **recall@K separately** from answer quality, or you tune the wrong half.
-- Version prompts and log the version, or "it got worse" is unanswerable.
+- You need a test suite for output that is never exactly the same twice. That means fixed inputs, a grader, and a number at the end.
+- There are three ways to grade, cheapest first: **plain assertions**, **property checks**, and **LLM-as-judge**.
+- A **golden dataset** of 20 real inputs is worth more than 200 invented ones.
+- For RAG, measure **recall@K separately** from answer quality. Otherwise you will improve the wrong half.
+- Give every prompt a version number and log it, or the question "why did it get worse?" has no answer.
 
 ## The problem
 
-Your assistant has been live a month. Someone tweaks the system prompt to fix a formatting complaint. Two
-weeks later refund questions are answered wrongly and nobody knows when it started.
+Your assistant has been live for a month. Someone edits the system prompt to fix a formatting complaint. Two
+weeks later, refund questions are being answered wrongly, and nobody knows when that started.
 
-You cannot `git bisect` this. There is no failing test. The output was never deterministic, so "it used to
-work" is a feeling.
+You cannot use `git bisect` here. There is no failing test to find. The output was never identical twice, so "it
+used to work" is only a feeling.
 
 ## Tier 1: plain assertions
 
-For structured output this is ordinary testing. Use it wherever you can.
+When the output is structured, this is just normal testing. Use it wherever you possibly can.
 
 ```php
 it('classifies a duplicate-charge complaint as urgent billing', function () {
@@ -30,12 +30,12 @@ it('classifies a duplicate-charge complaint as urgent billing', function () {
 });
 ```
 
-Classification, extraction, routing, tagging — all directly assertable. If your feature produces structured
-output, most of your evals are just tests.
+Classification, extraction, routing and tagging can all be asserted directly. So if your feature returns
+structured output, most of your evals are simply tests.
 
 ## Tier 2: property checks on prose
 
-You cannot assert exact strings, but you can assert properties:
+You cannot assert the exact words of a paragraph. But you can assert facts about it:
 
 ```php
 expect($answer)
@@ -51,12 +51,13 @@ foreach (extractNumbers($answer) as $number) {
 }
 ```
 
-That last one is a cheap, deterministic hallucination detector and it catches a lot.
+That last check is a cheap hallucination detector. It gives the same result every time, costs nothing, and
+catches a surprising number of problems.
 
 ## Tier 3: LLM-as-judge
 
-For qualities no assertion can express — faithful, complete, right tone — use a second model call with a
-rubric and structured output.
+Some qualities cannot be written as an assertion: is the answer faithful to the source, is it complete, is the
+tone right. For those, make a second model call with a clear rubric and structured output.
 
 ```php
 $judgement = $this->claude->extract(
@@ -83,15 +84,15 @@ $judgement = $this->claude->extract(
 );
 ```
 
-A judge is cheap and scales to hundreds of cases. It can also be confidently wrong — so **spot-check 10% of
-its verdicts by hand**. A judge you never audited is a metric you have no reason to believe.
+A judge is cheap and can grade hundreds of cases. But it can also be confidently wrong, so **check 10% of its
+verdicts by hand**. A judge you never audited is a number you have no reason to believe.
 
 ## The golden dataset
 
-Everything rests on this, and it is what people skip.
+Everything above depends on this, and it is the step people skip.
 
-**Twenty real examples beat two hundred invented ones.** Pull them from your data: common cases, awkward ones,
-the ones that caused complaints.
+**Twenty real examples beat two hundred invented ones.** Take them from your own data: the common questions, the
+awkward ones, and the ones that caused complaints.
 
 ```php
 // tests/Fixtures/evals/support-questions.php
@@ -111,8 +112,8 @@ return [
 ];
 ```
 
-Add one case every time something goes wrong in production. In three months you have a suite encoding every
-mistake your system ever made.
+Every time something goes wrong in production, add one case. After three months you have a suite that remembers
+every mistake your system has ever made.
 
 ## Running it
 
@@ -149,14 +150,14 @@ FAILED refund-window            answer said "about a month", expected "30 days"
 FAILED international-shipping   cited [1], correct passage was [3]
 ```
 
-Now a prompt change has a number. You can also see trade-offs: v5 might score higher but cost twice as much.
-That is a decision, not a guess.
+Now a prompt change comes with a number attached. You can also see the trade-offs. Version 5 might score higher
+but cost twice as much. That is a decision you can make, instead of a guess.
 
 ## RAG has its own metric
 
-Grade the two halves separately or you will tune the wrong one.
+Grade the two halves separately, or you will spend your time improving the wrong one.
 
-**Retrieval — recall@K:** is the passage containing the answer in the top K?
+**Retrieval — recall@K:** is the passage that contains the answer inside the top K results?
 
 ```php
 $recall = $cases->filter(function ($case) {
@@ -165,44 +166,46 @@ $recall = $cases->filter(function ($case) {
 })->count() / $cases->count();
 ```
 
-If recall@4 is 0.6, your ceiling is 60% and no prompt will raise it. Fix retrieval first. This one number
-redirects more wasted effort than anything else in the course.
+If recall@4 is 0.6, then 60% is your maximum possible score, and no prompt change can lift it. Fix retrieval
+first. This single number saves more wasted effort than anything else in this course.
 
-**Generation — faithfulness:** given the right passage *was* retrieved, was the answer correct and grounded?
-That is where the judge earns its keep.
+**Generation — faithfulness:** when the right passage *was* retrieved, was the answer correct and properly
+grounded? This is where the judge earns its money.
 
 ## Where evals fit
 
-- **Local:** 10 cases while iterating. Fast feedback.
-- **CI:** the full suite on any PR touching prompts, schemas or retrieval. Fail the build on a regression.
-  Remember it costs real money.
-- **Production:** sample 1% of live traffic through the judge and chart it. Quality drifts as your data and
-  users change, and drift is invisible without a chart.
+- **Locally:** run 10 cases while you are working, for quick feedback.
+- **In CI:** run the full suite on any pull request that touches prompts, schemas or retrieval. Fail the build
+  when quality drops. Remember that this costs real money.
+- **In production:** send 1% of live traffic through the judge and put it on a chart. Quality drifts as your
+  data and your users change, and you cannot see drift without a chart.
 
-> Version your prompts (`triage.v3`) and log the version with every call. When quality moves, "what changed?"
-> should be a `GROUP BY`, not someone's memory.
+> Give your prompts version numbers (`triage.v3`) and log the version with every call. Then when quality moves,
+> answering "what changed?" is a `GROUP BY` query instead of somebody's memory.
 
 ## Common mistakes
 
-- **No golden set.** "It seems better" is how prompts rot.
-- **Invented test cases.** They test what you imagined, not what users send.
-- **Only happy paths.** Include refusals, empty inputs, hostile inputs, the longest input you have seen.
-- **Judge with no audit.** You automated an opinion you never checked.
-- **Grading RAG end-to-end only.** You cannot tell retrieval failures from generation failures.
-- **Ignoring cost and latency.** 3% quality for 4× the price is usually bad — but only if you measured both.
+- **No golden set.** "It seems better" is how prompts slowly rot.
+- **Invented test cases.** They test what you imagined, not what your users actually send.
+- **Only testing easy questions.** Include refusals, empty inputs, hostile inputs, and the longest input you
+  have ever seen.
+- **A judge nobody audits.** You have automated an opinion you never checked.
+- **Grading RAG only end to end.** Then you cannot tell a retrieval failure from a generation failure.
+- **Ignoring cost and latency.** Paying 4 times more for 3% better quality is usually a bad deal, but you can
+  only know that if you measured both.
 
 ## You should now be able to
 
 - [ ] Build a golden dataset from real production data
-- [ ] Choose the cheapest grading tier that answers the question
-- [ ] Write an LLM judge with a rubric — and audit it
+- [ ] Pick the cheapest grading tier that can answer your question
+- [ ] Write an LLM judge with a rubric, and audit its verdicts
 - [ ] Measure recall@K separately from answer quality
-- [ ] Attach a number to a prompt change before shipping
+- [ ] Put a number on a prompt change before you ship it
 
 ## Practice
 
-1. Collect 20 real questions from your inbox or logs. Write the expected outcome for each.
-2. Build the runner. Print pass rate, cost and p95 latency.
-3. Break your prompt on purpose — delete a rule — and re-run. If the number does not move, your set is too
-   easy.
-4. Add one case for every bug from now on. That habit is the whole practice.
+1. Collect 20 real questions from your inbox or your logs. Write down the expected outcome for each one.
+2. Build the runner. Print the pass rate, the cost, and the p95 latency.
+3. Break your prompt on purpose by deleting a rule, then run it again. If the number does not move, your test
+   set is too easy.
+4. From now on, add one case for every bug. That habit is the whole practice.

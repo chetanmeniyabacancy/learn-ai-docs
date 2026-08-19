@@ -1,10 +1,10 @@
 ## Summary
 
-- LLMs are for **open-ended language**. If the input is columns, or the output is a ranking, use something else.
-- Three questions first: are the rules knowable? is the input structured? is there one right answer?
-- The LLM's real advantage is **no training data needed** — not accuracy, and not cost at volume.
-- Best systems are **hybrid**: cheap steps handle most traffic, the LLM handles the hard tail.
-- Always ask: what happens when it is wrong, who notices, how fast?
+- LLMs are for **open-ended language**. If your input is rows and columns, or your output is a ranking, use something else.
+- Ask three questions first: can the rules be written down? is the input structured? is there only one correct answer?
+- The real advantage of an LLM is that it needs **no training data**. It is not the most accurate option, and not the cheapest at high volume.
+- The best systems are **hybrid**. Cheap steps handle most of the traffic, and the LLM handles the difficult remainder.
+- Always ask: what happens when it is wrong, who will notice, and how quickly?
 
 ## The decision table
 
@@ -24,13 +24,13 @@
 | **Draft a reply in your tone** | **LLM** | Generation |
 | **Route free-text to tools** | **LLM** | Intent from language |
 
-The pattern: **LLMs are for open-ended language.**
+One sentence holds the whole table together: **LLMs are for open-ended language.**
 
 ## Three questions before you reach for a model
 
-**1. Are the rules knowable?**
+**1. Can the rules be written down?**
 
-If you can write them down, write them down.
+If you can write the rules, write the rules.
 
 ```php
 $priority = match (true) {
@@ -41,20 +41,22 @@ $priority = match (true) {
 };
 ```
 
-An LLM would take a few hundred milliseconds, cost a fraction of a cent, and be wrong sometimes. The `match`
-is right every time, free, forever.
+An LLM doing this same job would take a few hundred milliseconds, cost a small fraction of a cent, and be
+wrong now and then. The `match` above is correct every single time, costs nothing, and keeps working forever.
 
 **2. Is the input structured or unstructured?**
 
-Numbers and categories in columns → classical ML. Free text, images, audio → deep learning, maybe an LLM.
+Numbers and categories arranged in columns belong to classical machine learning. Free text, images and audio
+belong to deep learning, and sometimes to an LLM.
 
-Churn is the standard trap. It *feels* like AI. It is 40 numeric columns and a boolean. Gradient boosting
-beats an LLM on accuracy, cost and speed, and it is not close.
+Churn prediction is the classic trap. It *sounds* like an AI project. Really it is 40 numeric columns and one
+true/false column. Gradient boosting beats an LLM on accuracy, cost and speed, and the gap is large.
 
-**3. Is there one right answer?**
+**3. Is there only one correct answer?**
 
-"What is this customer's balance?" has one right answer — use the system that stores it. "Draft a friendly
-reminder about it" has many acceptable answers. That is where generation belongs.
+"What is this customer's balance?" has exactly one correct answer, so use the system that stores the balance.
+"Write a friendly reminder about that balance" has many acceptable answers. That second kind of task is where
+an LLM belongs.
 
 ## The volume argument
 
@@ -71,12 +73,14 @@ Classify 10,000,000 documents into 5 categories
     ~free · minutes · accuracy ~91%
 ```
 
-The LLM was not even the most accurate, and it cost 250× more.
+Look carefully: the LLM was not even the most accurate option, and it cost 250 times more.
 
-But at *ten thousand* documents the LLM wins outright: no labelling, no training, working this afternoon.
+But now change the number. At *ten thousand* documents the LLM clearly wins. There is no labelling to do, no
+training to run, and it can be working this afternoon.
 
-**The LLM's real advantage is that it works immediately with no training data.** That is worth paying for
-until volume says otherwise. Knowing where that crossover sits is the senior judgement.
+**So the LLM's real advantage is that it works straight away, with no training data.** That advantage is worth
+paying for until your volume grows too big. Knowing roughly where that turning point sits is what makes an
+engineer senior.
 
 ## Hybrid systems win
 
@@ -94,11 +98,11 @@ incoming message
       └─ LLM + RAG ───────► generated answer with citations
 ```
 
-Most messages never reach the expensive path. The LLM handles the open-ended tail — what it is uniquely good
-at.
+Most messages are finished before they reach the expensive path. The LLM only handles the open-ended cases,
+which is the work it is uniquely good at.
 
-Fraud detection done properly: an ML model scores in milliseconds; an LLM writes the human-readable
-explanation. Each does its half.
+Fraud detection built properly looks the same. A machine learning model gives a score in milliseconds, and an
+LLM writes the explanation a human can read. Each part does the half it is good at.
 
 ## Cost, speed, determinism
 
@@ -112,47 +116,49 @@ explanation. Each does its half.
 | Handles new input | No | Somewhat | Well |
 | Time to first version | Hours | Weeks | Minutes |
 
-Read the last two rows for the case *for* LLMs. Read the first three for the case against using them
+The last two rows are the argument *for* LLMs. The first three rows are the argument against using them
 everywhere.
 
 ## Six questions to ask
 
-1. Is the input text, or columns?
+1. Is the input text, or is it columns?
 2. Is there exactly one correct answer?
-3. Could a competent junior write the rules in a day?
-4. What volume, and what does that cost at $3 per million tokens?
-5. Must the output be explainable to a customer or regulator?
+3. Could a good junior developer write the rules in a day?
+4. What is the volume, and what does that cost at $3 per million tokens?
+5. Does the output have to be explainable to a customer or a regulator?
 6. **What happens when it is wrong? Who notices, and how fast?**
 
-Question 6 is the one people skip, and it decides whether the feature is safe to build. An LLM drafting a
-reply a human approves fails softly. An LLM approving refunds does not.
+Question 6 is the one people forget, and it decides whether the feature is safe to build at all. An LLM that
+drafts a reply for a human to approve fails gently. An LLM that approves refunds by itself does not.
 
 ## Common mistakes
 
-- The LLM as a universal hammer. Expensive, slow, non-deterministic, often less accurate.
-- Using it for arithmetic. Give it a calculator tool (Level 1 module 4).
-- Using it for exact lookup. That is SQL.
-- Ignoring the volume crossover. Fine at 10k/month, ruinous at 10M.
-- Skipping question 6 until after launch.
-- Refusing to use one out of purity. Hand-writing 400 rules for something an LLM does in a paragraph is
+- Treating the LLM as the tool for everything. It is expensive, slow, unpredictable, and often less accurate.
+- Using it for arithmetic. Give it a calculator tool instead (Level 1 module 4).
+- Using it for an exact lookup. That job belongs to SQL.
+- Ignoring the volume turning point. Fine at 10k a month, painful at 10M.
+- Leaving question 6 until after launch.
+- Refusing to use an LLM on principle. Writing 400 rules by hand for something an LLM handles in a paragraph is
   stubbornness, not discipline.
 
 ## You should now be able to
 
-- [ ] Route a task to rules, classical ML, or an LLM, and defend it
-- [ ] Spot the tabular-supervised trap dressed as an AI request
-- [ ] Do the volume arithmetic that flips the answer
+- [ ] Send a task to rules, classical ML, or an LLM, and explain your choice
+- [ ] Spot a rows-and-columns problem that is dressed up as an AI request
+- [ ] Do the volume maths that changes the answer
 - [ ] Design a hybrid pipeline
-- [ ] Ask the six questions before agreeing to build
+- [ ] Ask the six questions before you agree to build something
 
 ## Practice
 
-1. Take the last five "can we use AI for this?" requests. Route each honestly. Expect two to be SQL or rules.
-2. Take one AI feature you run. Cost it at current volume, then at 10×. Find where another approach wins.
-3. For your riskiest AI idea, answer question 6 in writing. If the answer is "nobody would notice", reconsider
-   that feature first.
+1. Take the last five "can we use AI for this?" requests you received. Route each one honestly. Expect two to
+   turn out to be SQL or plain rules.
+2. Take one AI feature you already run. Work out its cost at today's volume, then at ten times that volume.
+   Find the point where another approach wins.
+3. For your riskiest AI idea, write down the answer to question 6. If the answer is "nobody would notice", fix
+   that before building anything else.
 
 ---
 
-**That is Level 0.** You know what the model is, how it learned, what it does when you call it, and when not
-to call it. Level 1 is where you build.
+**That is Level 0.** You now know what the model is, how it learned, what happens when you call it, and when
+you should not call it at all. In Level 1 you start building.

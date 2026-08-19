@@ -1,15 +1,15 @@
 ## Summary
 
-- The entire training goal is: **predict the next token**. Nothing else.
-- Raw scores are **logits**. **Softmax** turns them into probabilities that sum to 1.
-- **Temperature** used to flatten or sharpen that distribution. Current Claude models removed it.
-- **Attention** lets every token look directly at every other token, weighted by relevance.
-- Hallucination is not a bug. Plausible continuation is the objective.
-- Cost grows faster than linearly with context, because every token is compared with every other.
+- The whole training goal is one thing: **guess the next token**. Nothing more.
+- The raw scores the model produces are called **logits**. **Softmax** turns them into percentages that add up to 1.
+- **Temperature** used to make those percentages flatter or sharper. Current Claude models removed it.
+- **Attention** lets every token look at every other token directly, and pay more attention to the important ones.
+- Hallucination is not a bug. Writing a believable continuation is exactly the job the model was trained for.
+- Cost grows faster than the length of your input, because every token is compared with every other token.
 
 ## Next-token prediction
 
-The model takes token vectors and outputs one score per vocabulary token.
+The model reads the token vectors and gives one score to every token in its vocabulary.
 
 ```text
 input:  "The customer wants a"
@@ -21,7 +21,8 @@ input:  "The customer wants a"
    " banana"      -3.1
 ```
 
-Those are **logits**. They can be negative and sum to anything. **Softmax** fixes that:
+Those scores are called **logits**. They can be negative, and they can add up to anything. **Softmax** turns
+them into proper percentages:
 
 ```php
 function softmax(array $logits): array
@@ -42,8 +43,9 @@ function softmax(array $logits): array
    " banana"      0.0000
 ```
 
-Pick one, append it, run the whole model again on the longer sequence. Repeat until a stop token. Every LLM
-response you have ever seen came out of this loop — which is also why streaming works (Level 1 module 10).
+Now the model picks one token, adds it to the end of the text, and runs the whole model again on the longer
+text. It repeats this until it produces a stop token. Every reply you have ever seen from an LLM came out of
+this small loop. It is also the reason streaming works, which you will use in Level 1 module 10.
 
 ## Sampling: picking the token
 
@@ -53,7 +55,7 @@ response you have ever seen came out of this loop — which is also why streamin
 | **Temperature** | Flatten or sharpen before sampling. |
 | **Top-p** | Sample only from the top tokens that sum to p. |
 
-Temperature reshapes logits before softmax:
+Temperature changes the logits before softmax runs:
 
 ```php
 $scaled = array_map(fn ($logit) => $logit / $temperature, $logits);
@@ -68,29 +70,31 @@ temperature 1.0 →  0.7001       0.1908            0.0857   natural
 temperature 2.0 →  0.4859       0.2536            0.1700   adventurous
 ```
 
-> **Current Claude models removed `temperature`.** Sending a non-default value returns a 400 (Level 1 module
-> 1). You steer with the prompt now. Knowing what it did still matters, because most tutorials online still
-> set it.
+> **Current Claude models removed `temperature`.** If you send any value other than the default, you get a 400
+> error (Level 1 module 1). Today you control style through the prompt instead. It is still worth knowing what
+> temperature did, because most tutorials online still set it.
 
-**And here is hallucination, mechanically.** Ask about your refund policy. The model computes a distribution
-over next tokens. It has never seen your handbook, so the likeliest continuation is whatever a normal refund
-policy sounds like. It emits that. There is no step where it could have checked, because there is nothing to
-check against. The fix is to put the real text in the input — RAG.
+**Now you can see hallucination clearly.** You ask about your refund policy. The model works out a percentage
+for every possible next token. It has never seen your handbook, so the most believable continuation is whatever
+a normal refund policy sounds like. It writes that. There is no moment in this process where it could have
+checked the fact, because there is nothing inside it to check against. The only real fix is to put your actual
+text into the input, and that is RAG.
 
 ## Attention: the actual invention
 
-To predict the next token you must know which earlier tokens matter.
+To guess the next token well, the model must know which earlier words matter.
 
 ```text
 "The invoice that Priya sent last Tuesday for the Manchester job was never ___"
 ```
 
-To predict "paid" you need "invoice" — nine tokens back — far more than "Tuesday". Older architectures (RNNs,
-LSTMs) read in order and carried everything in a fixed-size memory, so long links faded.
+To guess "paid", the important word is "invoice", which is nine tokens back. "Tuesday" barely matters. Older
+designs (called RNNs and LSTMs) read the sentence word by word and squeezed everything into one small memory,
+so connections to faraway words slowly faded away.
 
-**Attention lets every token look at every other token in one step.**
+**Attention fixed this by letting every token look at every other token in a single step.**
 
-Each token produces three vectors from its embedding, using three learned weight matrices:
+From its embedding, each token creates three vectors, using three sets of learned weights:
 
 | Vector | Meaning |
 |---|---|
@@ -102,12 +106,12 @@ Each token produces three vectors from its embedding, using three learned weight
 attention(Q, K, V) = softmax( Q · Kᵀ / √d ) · V
 ```
 
-Four ordinary steps:
+That formula is only four ordinary steps:
 
-1. **Score** — dot each query with each key. High = relevant.
-2. **Scale** — divide by `√d` so scores do not explode.
-3. **Softmax** — turn scores into weights summing to 1.
-4. **Mix** — weighted average of the value vectors.
+1. **Score** — compare every query with every key. A high score means "this one is relevant to me".
+2. **Scale** — divide by `√d` to stop the scores from becoming too large.
+3. **Softmax** — turn the scores into weights that add up to 1.
+4. **Mix** — take a weighted average of the value vectors.
 
 ```text
 predicting after "was never"
@@ -125,12 +129,12 @@ predicting after "was never"
   → the mixed vector is mostly "invoice", so "paid" scores high
 ```
 
-Each token's output is now a blend of what it found relevant. That is the **contextual embedding** promised in
-module F5: "bank" near "river" and "bank" near "mortgage" attend to different neighbours, so they end up as
-different vectors.
+After this, each token's output is a mixture of everything it found relevant. This is exactly the **contextual
+embedding** that module F5 promised. "Bank" next to "river" and "bank" next to "mortgage" pay attention to
+different neighbours, so they finish with different numbers.
 
-**Multi-head attention** runs several of these at once with different weights, so one head can track grammar
-while another tracks topic.
+**Multi-head attention** simply runs several of these at the same time with different weights. So one head can
+follow grammar while another head follows the topic.
 
 ## A transformer block
 
@@ -148,17 +152,18 @@ while another tracks topic.
                      next block
 ```
 
-Repeat dozens of times. Attention moves information between positions; the feed-forward layers do the
-per-position thinking. Add embeddings at the bottom and a logits layer at the top, and that is every current
-frontier model. The 2017 paper was called *Attention Is All You Need*, and the title was not an exaggeration.
+This block is repeated dozens of times. Attention moves information between positions, and the feed-forward
+layers do the thinking at each position. Add the embeddings at the bottom and the logits layer at the top, and
+you have every modern frontier model. The 2017 paper that introduced this was called *Attention Is All You
+Need*, and the title turned out to be accurate.
 
 ## Why this made models good
 
-- **Parallel training.** All tokens process at once, unlike RNNs. That let training scale to GPU clusters —
-  and scale was the whole game.
-- **True long-range links.** Position 4,000 can look straight at position 3.
-- **Predictable scaling.** More data + more parameters + more compute reliably gave better results, over
-  several orders of magnitude. That predictability is why anyone spent hundreds of millions of dollars.
+- **Training runs in parallel.** All tokens are processed together, which RNNs could not do. That made it
+  possible to train on huge GPU clusters, and scale was what mattered most.
+- **Long-distance links really work.** Token number 4,000 can look straight back at token number 3.
+- **Results improved predictably.** More data, more parameters and more compute kept giving better models,
+  again and again. That reliability is why companies were willing to spend hundreds of millions of dollars.
 
 ## What this explains at work
 
@@ -171,26 +176,26 @@ frontier model. The 2017 paper was called *Attention Is All You Need*, and the t
 | It hallucinates confidently | Its goal is plausible continuation, not truth |
 | Prompt position matters | Start and end of the prompt get attended to most reliably |
 
-That last row is why Level 1 module 2 says role first, format rules last. Not superstition — a property of the
-mechanism.
+That last row is the reason Level 1 module 2 tells you to put the role first and the format rules last. It is
+not a superstition. It comes from how attention works.
 
 ## Common mistakes
 
-- Thinking there is a fact store inside. There is not.
-- Expecting reliable reasoning because the text is fluent.
-- Setting `temperature` on a current Claude model. Removed.
-- Assuming a 1M context window makes RAG unnecessary. Cost and accuracy disagree.
+- Thinking there is a store of facts inside the model. There is not.
+- Trusting the reasoning because the writing sounds confident.
+- Setting `temperature` on a current Claude model. It has been removed.
+- Assuming a 1M context window makes RAG pointless. Cost and accuracy say otherwise.
 
 ## You should now be able to
 
 - [ ] Explain next-token prediction and what softmax does
-- [ ] Say what temperature did and why it was removed
+- [ ] Say what temperature did, and why it was removed
 - [ ] Describe query, key and value in one sentence each
-- [ ] Explain attention as "every token looks at every other, weighted"
-- [ ] Derive hallucination from the training goal
+- [ ] Explain attention as "every token looks at every other one, with weights"
+- [ ] Show how hallucination follows directly from the training goal
 
 ## Practice
 
-1. Run the softmax example. Change a logit slightly and watch the probability move a lot.
-2. Run the attention example and find the token carrying most of the signal.
-3. Explain to a colleague in two sentences why the model invents plausible policies.
+1. Run the softmax example. Change one logit a little and watch the percentage move a lot.
+2. Run the attention example and find the token that carries most of the signal.
+3. Explain to a colleague, in two sentences, why the model invents believable policies.

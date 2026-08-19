@@ -1,14 +1,13 @@
 ## Summary
 
-- A prompt is a **specification**. Any freedom you leave will be used, usually against you.
-- **System prompt** = rules (stable). **User message** = data (changes). Keep them separate.
-- Six things that work: be specific, show examples, allow "I don't know", delimit data, order instructions,
-  do not shout.
-- Iterate by changing **one thing** and re-running the **same 20 real inputs**.
+- Treat a prompt like a **specification**. Any freedom you leave in it will be used, and usually not in the way you wanted.
+- The **system prompt** holds your rules and stays the same. The **user message** holds the data and changes every time. Keep the two separate.
+- Six things that really work: be specific, show examples, allow "I don't know", wrap the data in tags, order your instructions well, and do not shout.
+- Improve a prompt by changing **one thing** and running it again on the **same 20 real inputs**.
 
 ## The problem
 
-Your email classifier works in testing. In production, one in twenty replies looks like this:
+Your email classifier works fine while you test it. Then in production, one reply in twenty looks like this:
 
 ```text
 Sure! Here's my analysis of this email:
@@ -17,9 +16,10 @@ Sure! Here's my analysis of this email:
 I'd categorise this as an order status enquiry because…
 ```
 
-Your parser expected `Category: order_status` on line one. Now you have a regex, a fallback and a retry.
+Your parser wanted `Category: order_status` on the first line. Now you are writing a regex, a fallback and a
+retry.
 
-The model was not wrong. Your instructions allowed that answer.
+The model did nothing wrong. Your instructions allowed this answer, so sometimes you get it.
 
 ## Anatomy
 
@@ -38,13 +38,13 @@ $message = $client->messages->create(
 );
 ```
 
-**System prompt:** role, rules, output format. Same every call. Carries more authority than anything a user
-types — which becomes a security property in module 9.
+**The system prompt** holds the role, the rules and the output format. It is the same on every call. It also
+carries more weight than anything a user types, which becomes a security feature in module 9.
 
-**User message:** the data for this request.
+**The user message** holds the data for this one request.
 
-Keeping them separate is not style. It is what makes prompt caching work (module 10) and stops user input
-rewriting your rules.
+Keeping them apart is not about neatness. It is what makes prompt caching possible (module 10), and it stops
+user input from rewriting your rules.
 
 ## Six techniques that work
 
@@ -60,12 +60,13 @@ rewriting your rules.
    Output only the bullets. No preamble, no closing line.
 ```
 
-"No preamble" does real work. Left alone, a chat model opens with a friendly sentence, because that is what
-helpful text looks like.
+The words "no preamble" do real work here. If you do not say it, a chat model will start with a friendly
+sentence, because friendly sentences are what helpful text normally looks like.
 
 ### 2. Show, don't tell
 
-One example beats a paragraph of description. Two or three pin down edge cases prose cannot express.
+One example teaches more than a paragraph of description. Two or three examples can pin down edge cases that
+are very hard to describe in words.
 
 ```php
 $system = <<<'TXT'
@@ -84,22 +85,24 @@ Output: NONE
 TXT;
 ```
 
-The third example is the important one. It teaches that an unresolvable relative date is `NONE`, not a guess —
-fiddly to state, obvious to demonstrate.
+The third example is the important one. It teaches that "next Tuesday" cannot be turned into a real date, so
+the answer is `NONE` instead of a guess. That rule is awkward to write in words and obvious to show with an
+example.
 
 ### 3. Give it permission to fail
 
-Models are trained to be helpful, and helpfulness looks like an answer. Without permission to say "I don't
-know", you have required a guess.
+The model was trained to be helpful, and being helpful looks like giving an answer. So if you do not allow it
+to say "I don't know", you have quietly demanded a guess.
 
 ```text
 If the email does not clearly state a category, reply exactly: UNCLEAR
 Do not infer a category from tone or from the sender's name.
 ```
 
-This one line removes a whole class of hallucination. Highest-value sentence in most prompts.
+That one line removes a whole family of hallucinations. In most prompts it is the most valuable sentence you
+can add.
 
-### 4. Delimit the data
+### 4. Wrap the data in tags
 
 ```php
 $prompt = <<<TXT
@@ -113,26 +116,26 @@ Question: what does the customer want us to do?
 TXT;
 ```
 
-XML-style tags stop the model reading your instructions as content, or content as instructions. They also make
-the module 9 security fix straightforward.
+XML-style tags stop two mistakes: the model reading your instructions as content, and the model reading content
+as instructions. They also make the security fix in module 9 much easier.
 
 ### 5. Order instructions the way they run
 
-Models weight the start and end of the system prompt most. Role first, format rules last — right before the
-model starts writing is where a format rule lands hardest.
+The model pays most attention to the start and the end of the system prompt. So put the role first and the
+format rules last. A format rule sitting just before the model starts writing has the strongest effect.
 
 ### 6. Do not shout
 
-Old prompts are full of `CRITICAL: YOU MUST ALWAYS…`. That style existed because older models were less
-steerable. Current models follow plain instructions closely, and shouting causes *over*-triggering — rules
-applied where they do not belong.
+Old prompts are full of lines like `CRITICAL: YOU MUST ALWAYS…`. That style came from older models, which were
+harder to steer. Current models follow normal instructions closely. Shouting now causes the opposite problem:
+the rule fires too often, in places where it does not belong.
 
 ```text
 ❌ CRITICAL!!! You MUST ALWAYS use the search tool for EVERY question!!!
 ✅ Use the search tool when the answer depends on information not in the conversation.
 ```
 
-If a rule is over-applied, turn the volume down, not up.
+So if a rule is being applied too widely, turn the volume down, not up.
 
 ## A prompt worth copying
 
@@ -169,44 +172,46 @@ class TriagePrompt
 }
 ```
 
-What makes it good: closed enums, priority rules that are decision criteria not adjectives, an explicit "never
-invent", and a defined escape hatch.
+Four things make it good. The allowed values are a closed list. The priority rules are real tests, not vague
+adjectives like "important". There is an explicit "never invent". And there is a clear escape route when the
+category is unclear.
 
 ## Iterating like an engineer
 
 1. Write the prompt.
-2. Run it on **20 real inputs** — from your database, including the awkward ones.
-3. Read every output. Note each failure and why.
+2. Run it on **20 real inputs** taken from your database, including the messy ones.
+3. Read every single output. Write down each failure and why it happened.
 4. Change **one thing**.
-5. Re-run the same 20. Better or worse?
+5. Run the same 20 inputs again. Is it better or worse?
 
-Changing three things and eyeballing two examples is how teams end up with 400-line prompts nobody dares
-touch. Module 8 turns step 5 into a test suite.
+If you change three things at once and check two examples, you end up with a 400-line prompt that nobody dares
+to touch. Module 8 turns step 5 into a proper test suite.
 
-> Keep prompts in PHP classes under version control. Never inline in a controller, never in the database. You
-> will want to diff and roll back.
+> Keep your prompts in PHP classes, in version control. Do not write them inline in a controller, and do not
+> store them in the database. One day you will need to compare versions and roll one back.
 
 ## Common mistakes
 
-- **Rule pile-up.** Every incident adds a line until rules contradict. Delete rules whose failure no longer
-  reproduces.
-- **Politeness.** "Please could you kindly…" is tokens you pay for.
-- **Forgetting it cannot see your app.** "Use the standard format" means nothing. Show the format.
-- **Only testing happy paths.** Your prompt will meet an empty ticket, a 4,000-word rant, and one in
-  Portuguese.
-- **Trusting one good demo.** One answer proves nothing about a probabilistic system.
+- **Rules piling up.** Every incident adds one more line, until the rules contradict each other. Delete rules
+  whose problem no longer happens.
+- **Being polite.** "Please could you kindly…" is just tokens you are paying for.
+- **Forgetting it cannot see your app.** "Use the standard format" means nothing to the model. Show the format.
+- **Testing only the easy cases.** Your prompt will meet an empty ticket, a 4,000-word angry message, and one
+  written in Portuguese.
+- **Trusting one good demo.** One good answer proves nothing about a system that gives different answers each
+  time.
 
 ## You should now be able to
 
-- [ ] Split rules (system) from data (user) and say why
-- [ ] Use examples to pin an edge case
-- [ ] Write an explicit "I don't know" escape hatch
-- [ ] Delimit untrusted input
-- [ ] Improve a prompt one change at a time against fixed inputs
+- [ ] Separate rules (system) from data (user), and explain why it matters
+- [ ] Use examples to pin down an edge case
+- [ ] Write a clear "I don't know" escape route
+- [ ] Wrap untrusted input in tags
+- [ ] Improve a prompt one change at a time, against a fixed set of inputs
 
 ## Practice
 
-1. Run a module-1 prompt on 20 real records. Count outputs your parser would choke on.
-2. Add an output-format rule and an `UNCLEAR` escape hatch. Re-run. Count again.
-3. Feed it an empty string and a 5,000-word document. Fix what breaks.
-4. In the **Live run** page, delete "at most 3 bullet points" from panel 1 and watch the answer sprawl.
+1. Run a module-1 prompt on 20 real records. Count how many outputs would break your parser.
+2. Add an output-format rule and an `UNCLEAR` escape route. Run it again. Count again.
+3. Feed it an empty string, then a 5,000-word document. Fix whatever breaks.
+4. On the **Live run** page, delete "at most 3 bullet points" from panel 1 and watch the answer grow long.
