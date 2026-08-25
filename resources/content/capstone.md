@@ -177,13 +177,18 @@ Report **recall@4 separately** from answer quality. If you mix them, you will en
 
 ## What comes after
 
-| Level 1 (this) | Level 2 (next) |
+| Level 1 (this) | Level 2, module by module |
 |---|---|
-| You control the flow | The model plans and controls the flow |
-| One or two tools, read-mostly | Many tools, writes, multi-step plans |
-| Basic RAG | Reranking, query rewriting, hybrid retrieval |
-| Stateless requests | Agent memory across sessions |
-| One call per step | Multi-agent systems, MCP |
+| Basic RAG | Reranking, query rewriting, hybrid search (module 12) |
+| You control the flow | The model plans its own steps (13), and when it should not (14) |
+| Your own tool definitions | A standard shape other clients can use (15) |
+| Stateless requests | Memory across sessions, and deliberate forgetting (16) |
+| One call per step | Workers reading in parallel for an orchestrator (17) |
+| Grade the answer | Grade the path, over several runs (18) |
+| One log row per call | Traces, spans, cost attribution, drift (19) |
+| Prompt rules | Checks in code at four gates (20) |
+| One model, one path | Routing, caching layers, fallbacks, tenancy (21) |
+| A tool that writes | Budgets, idempotency, approval, audit (22) |
 
 Every row on the right is built on the row on the left. An agent is a tool loop with better planning. Agent
 memory is RAG over your conversation history. MCP is tool calling with a standard message format. Nothing in

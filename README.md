@@ -1,8 +1,16 @@
-# AI Engineer — Level 1
+# AI Engineer
 
-A self-hosted course site that takes a working backend engineer to **Level 1: AI Application Engineer**.
+A self-hosted course site that takes a working backend engineer from the foundations to
+**Level 2: AI / LLM Engineer**.
 
-The concepts are language-neutral — same API, same JSON, same patterns whatever you write them in. Level 1
+- **Level 0 — Foundations.** What AI, machine learning and generative AI actually are, with the maths done by
+  hand so nothing stays abstract.
+- **Level 1 — AI Application Engineer.** Prompting, structured output, tools, RAG, evaluation, security and
+  production.
+- **Level 2 — AI / LLM Engineer.** Advanced retrieval, agents, workflows, MCP, memory, multi-agent systems,
+  evaluation, observability, guardrails, scaling and production agents.
+
+The concepts are language-neutral — same API, same JSON, same patterns whatever you write them in. The course
 shows them in **Laravel/PHP** because that is where you are already fast; when you move to Python later, only
 the syntax changes.
 
@@ -10,9 +18,9 @@ the syntax changes.
 
 | | |
 |---|---|
-| **12 lessons** | Orientation → LLM basics → prompting → structured output → tool calling → embeddings → vector storage → RAG → evaluation → security → production → capstone |
-| **28 worked examples** | Code **and** the output it produces. No API key, no network — they work offline, forever. |
-| **60 quiz questions** | 5 per module, with an explanation on every answer. 70% marks a module complete. |
+| **31 lessons** | 8 foundations · 12 on shipping features · 11 on agents, retrieval and operations |
+| **55 worked examples** | Code **and** the output it produces. No API key, no network — they work offline, forever. |
+| **155 quiz questions** | 5 per module, with an explanation on every answer. 70% marks a module complete. |
 | **4 live demos** | The same ideas run for real against the API with your own input. This is the only part that needs a key. |
 | **Progress tracking** | Anonymous, cookie-based. No signup, so the site can just be shared as a link. |
 | **Glossary** | Every term, defined for someone who writes backend code |
