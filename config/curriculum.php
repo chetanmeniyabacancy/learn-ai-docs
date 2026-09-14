@@ -5,17 +5,18 @@
 | Curriculum
 |--------------------------------------------------------------------------
 |
-| Two levels:
+| Three levels:
 |   0 — Foundations. How AI actually works, from the root.
 |   1 — AI Application Engineer. Shipping real features.
+|   2 — AI / LLM Engineer. Systems that plan, act and keep running.
 |
 | Each module maps to:
 |   resources/content/{slug}.md   → the lesson body (markdown)
 |   resources/quizzes/{slug}.php  → the quiz questions
 |
 | `code` is what the reader sees (F1, F2… for foundations; 0, 1, 2… for
-| Level 1). Keep Level 1 codes stable — the lessons cross-reference them
-| by number in prose.
+| Level 1; 12 onwards for Level 2). Keep the codes stable — the lessons
+| cross-reference them by number in prose.
 |
 */
 
@@ -41,6 +42,11 @@ return [
             'title' => 'Level 1 — AI Application Engineer',
             'tagline' => 'Build features on top of a model somebody else trained.',
             'blurb' => 'The working half. Prompting, structured output, tools, RAG, evaluation, security and production — each one a business problem, the idea that solves it, and the code that ships it.',
+        ],
+        2 => [
+            'title' => 'Level 2 — AI / LLM Engineer',
+            'tagline' => 'Systems that plan their own steps, act on real data, and keep working when they fail.',
+            'blurb' => 'In Level 1 you controlled the flow. Here the model does, and everything that makes that safe is engineering: better retrieval, memory, orchestration, budgets, tracing, guardrails and the discipline to know when a plain workflow beats an agent.',
         ],
     ],
 
@@ -258,6 +264,123 @@ return [
             'tagline' => 'Build the whole thing: a support assistant with RAG, tools, evals and guardrails.',
             'minutes' => 180,
             'problem' => 'You have learned eleven pieces. Now assemble them into one product.',
+        ],
+
+        /*
+        |----------------------------------------------------------------
+        | Level 2 — AI / LLM Engineer
+        |----------------------------------------------------------------
+        */
+
+        [
+            'slug' => 'advanced-rag',
+            'level' => 2,
+            'code' => '12',
+            'number' => 12,
+            'title' => 'Advanced RAG',
+            'tagline' => 'Query rewriting, hybrid search, reranking and better chunks — what to do when basic RAG stops being good enough.',
+            'minutes' => 15,
+            'problem' => 'Recall is 60%, so 4 questions in 10 cannot be answered no matter how good the prompt is.',
+        ],
+        [
+            'slug' => 'ai-agents',
+            'level' => 2,
+            'code' => '13',
+            'number' => 13,
+            'title' => 'AI Agents',
+            'tagline' => 'The same tool loop from Level 1, but the model decides the steps — and that changes everything about testing it.',
+            'minutes' => 14,
+            'problem' => 'The task takes eight steps and you cannot write them all down in advance.',
+        ],
+        [
+            'slug' => 'agentic-workflows',
+            'level' => 2,
+            'code' => '14',
+            'number' => 14,
+            'title' => 'Agentic Workflows',
+            'tagline' => 'Chaining, routing, parallel fan-out and human approval — deterministic orchestration around a non-deterministic model.',
+            'minutes' => 14,
+            'problem' => 'The agent is right 70% of the time, which in production means wrong 3,000 times a month.',
+        ],
+        [
+            'slug' => 'mcp',
+            'level' => 2,
+            'code' => '15',
+            'number' => 15,
+            'title' => 'MCP — Model Context Protocol',
+            'tagline' => 'Tool calling with a standard wire format, so one integration works with every client.',
+            'minutes' => 12,
+            'problem' => 'Every assistant you build redefines the same twelve tools in its own shape.',
+        ],
+        [
+            'slug' => 'agent-memory',
+            'level' => 2,
+            'code' => '16',
+            'number' => 16,
+            'title' => 'Agent Memory',
+            'tagline' => 'Working, episodic and semantic memory — what to keep, what to summarise, and what to forget on purpose.',
+            'minutes' => 14,
+            'problem' => 'It forgets everything between sessions, and remembering everything costs a fortune.',
+        ],
+        [
+            'slug' => 'multi-agent',
+            'level' => 2,
+            'code' => '17',
+            'number' => 17,
+            'title' => 'Multi-Agent Systems',
+            'tagline' => 'Orchestrator and workers, delegation, and the honest arithmetic of running five agents instead of one.',
+            'minutes' => 14,
+            'problem' => 'One agent fills its context with reading before it starts thinking.',
+        ],
+        [
+            'slug' => 'advanced-evaluation',
+            'level' => 2,
+            'code' => '18',
+            'number' => 18,
+            'title' => 'Advanced AI Evaluation',
+            'tagline' => 'Grading a path, not just an answer: trajectory evals, judges you audit, regression gates and online tests.',
+            'minutes' => 15,
+            'problem' => 'Every eval passes and users still say it got worse.',
+        ],
+        [
+            'slug' => 'observability',
+            'level' => 2,
+            'code' => '19',
+            'number' => 19,
+            'title' => 'AI Observability / LLMOps',
+            'tagline' => 'Traces, spans, cost attribution and drift — knowing what your system did, not what you hoped it did.',
+            'minutes' => 14,
+            'problem' => 'Something got worse last Tuesday and nobody can say what changed.',
+        ],
+        [
+            'slug' => 'guardrails',
+            'level' => 2,
+            'code' => '20',
+            'number' => 20,
+            'title' => 'AI Guardrails',
+            'tagline' => 'Checks on the way in and on the way out, sized to what a mistake actually costs.',
+            'minutes' => 15,
+            'problem' => 'One bad answer reaches a customer and you hear about it on social media first.',
+        ],
+        [
+            'slug' => 'architecture-scaling',
+            'level' => 2,
+            'code' => '21',
+            'number' => 21,
+            'title' => 'AI Architecture & Scaling',
+            'tagline' => 'Model routing, caching layers, batching, queues, fallbacks and tenancy — the boring parts that decide the bill.',
+            'minutes' => 15,
+            'problem' => 'It worked for 10 users. At 10,000 it is slow, expensive and falls over together.',
+        ],
+        [
+            'slug' => 'production-agents',
+            'level' => 2,
+            'code' => '22',
+            'number' => 22,
+            'title' => 'Production Agent Systems',
+            'tagline' => 'Budgets, idempotency, resuming a half-finished plan, approvals and audit — running agents where money moves.',
+            'minutes' => 18,
+            'problem' => 'An agent failed halfway through and left your data in a state nobody designed.',
         ],
 
     ],

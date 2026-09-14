@@ -28,3 +28,12 @@ Thumbs.db
 
 # Separate Laravel demo app, tracked in its own repository
 /level_1_demo
+
+# Capstone app, tracked in its own repository
+/helpdesk_ai
+
+# AML triage console, tracked in its own repository
+/clearline
+
+# Utilization management console, tracked in its own repository
+/carepath
